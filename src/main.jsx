@@ -5,10 +5,6 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
-// Register the PWA service worker automatically
-import { registerSW } from "virtual:pwa-register";
-registerSW({ immediate: true });
-
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 if (!publishableKey) {
