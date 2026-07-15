@@ -36,5 +36,5 @@ A collaborative digital workspace and dynamic flowchart design application built
 
 ---
 
-ithub.com/YOUR_USERNAME/BoardCraft.git](https://github.com/YOUR_USERNAME/BoardCraft.git)
+Github.com/YOUR_USERNAME/BoardCraft.git](https://github.com/YOUR_USERNAME/BoardCraft.git)
 cd BoardCraft
