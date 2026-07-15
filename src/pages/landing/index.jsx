@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from "react-router-dom";
 import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
 import { 
@@ -13,12 +13,12 @@ import {
   Heart,
   ExternalLink,
   Sun,
-  Moon
+  Moon,
+  ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 
-// NATIVE SVG FOR GITHUB TO BYPASS ANY EXPORT INTEROP ERRORS
+// NATIVE SVG FOR GITHUB
 const CustomGitHubIcon = ({ className = "h-5 w-5" }) => (
   <svg 
     role="img" 
@@ -31,12 +31,70 @@ const CustomGitHubIcon = ({ className = "h-5 w-5" }) => (
   </svg>
 );
 
+// SCROLL REVEAL WRAPPER
+function ScrollReveal({ children }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const domRef = useRef();
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+        }
+      });
+    }, { threshold: 0.1 });
+    
+    const { current } = domRef;
+    if (current) observer.observe(current);
+    return () => {
+      if (current) observer.unobserve(current);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={domRef}
+      className={`transition-all duration-1000 transform ${
+        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function LandingPage() {
   const [isDark, setIsDark] = useState(true);
   const [demoShape, setDemoShape] = useState("rectangle");
-  const [demoColor, setDemoColor] = useState("#6366f1");
+  const [demoColor, setDemoColor] = useState("#10b981"); // Default Nexus green
+  const [trail, setTrail] = useState([]);
+  
+  // Rotating text index state
+  const [wordIndex, setWordIndex] = useState(0);
+  const words = ["Canvas", "Support", "Experiences", "Relationships", "Service"];
 
-  // Sync state token to DOM class reference for complete Tailwind dark wrapper support
+  // Rotating Word Transition Effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWordIndex((prev) => (prev + 1) % words.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Trail Cursor Tracking Effect
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setTrail((prev) => [
+        { x: e.clientX, y: e.clientY, id: Math.random() },
+        ...prev.slice(0, 12)
+      ]);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  // Sync state to HTML DOM for Tailwind dark class
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
@@ -61,53 +119,112 @@ export default function LandingPage() {
   };
 
   return (
-    <div className={`min-h-screen w-full font-sans transition-colors duration-300 ${isDark ? 'dark bg-[#030712] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+    <div className={`min-h-screen w-full font-sans transition-colors duration-500 overflow-x-hidden selection:bg-emerald-500/30 selection:text-emerald-400 ${
+      isDark ? 'dark bg-[#08080c] text-slate-200' : 'bg-slate-50 text-slate-900'
+    }`}>
       
-      {/* PERFECTLY CENTER-ALIGNED NAVBAR */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b backdrop-blur-md bg-white/80 dark:bg-[#030712]/80 border-slate-200 dark:border-slate-900 px-6 md:px-12 flex items-center justify-between transition-colors duration-300">
-        
-        {/* Brand Logo Left */}
-        <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-indigo-600 dark:text-indigo-400 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-          <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-md">⚡</div>
-          <span className="bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-violet-400 bg-clip-text text-transparent">BoardCraft</span>
+      {/* INJECTED CSS ANIMATION KEYFRAMES FOR ROTATING WORDS */}
+      <style>{`
+        @keyframes textSlideUp {
+          0% {
+            transform: translateY(20px);
+            opacity: 0;
+            filter: blur(4px);
+          }
+          15% {
+            transform: translateY(0);
+            opacity: 1;
+            filter: blur(0);
+          }
+          85% {
+            transform: translateY(0);
+            opacity: 1;
+            filter: blur(0);
+          }
+          100% {
+            transform: translateY(-20px);
+            opacity: 0;
+            filter: blur(4px);
+          }
+        }
+        .animate-word-change {
+          animation: textSlideUp 2.5s infinite ease-in-out;
+        }
+      `}</style>
+
+      {/* CUSTOM PARTICLES/DOT TRAIL FROM CURSOR */}
+      <div className="pointer-events-none fixed inset-0 z-50">
+        {trail.map((dot, index) => (
+          <div
+            key={dot.id}
+            className={`absolute rounded-full transition-opacity duration-300 pointer-events-none ${
+              isDark ? 'bg-emerald-400/30 shadow-[0_0_8px_#10b981]' : 'bg-indigo-600/20'
+            }`}
+            style={{
+              left: dot.x - 4,
+              top: dot.y - 4,
+              width: `${12 - index * 0.8}px`,
+              height: `${12 - index * 0.8}px`,
+              opacity: (12 - index) / 12,
+              transform: 'translate3d(0,0,0)'
+            }}
+          />
+        ))}
+      </div>
+
+      {/* NEXUS STYLE BACKGROUND GRID PATTERN */}
+      <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_40%,#000_70%,transparent_100%)] pointer-events-none" />
+
+      {/* HERO GLOW EFFECT (TOP CENTER) */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-emerald-500/10 dark:bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
+
+      {/* HEADER NAVBAR */}
+      <header className="fixed top-0 left-0 right-0 z-40 h-16 border-b backdrop-blur-xl bg-white/70 dark:bg-[#08080c]/70 border-slate-200/80 dark:border-slate-900/80 px-6 md:px-12 flex items-center justify-between transition-colors duration-300">
+        {/* Brand Logo - Symbol REMOVED, keep only styled typography */}
+        <div 
+          className="flex items-center gap-1.5 font-bold text-xl tracking-tight cursor-pointer" 
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        >
+          <span className="bg-gradient-to-r from-slate-900 via-emerald-600 to-emerald-400 dark:from-white dark:via-emerald-400 dark:to-teal-300 bg-clip-text text-transparent font-extrabold tracking-tight font-sans">
+            BoardCraft
+          </span>
         </div>
 
-        {/* Center Aligned Links Group */}
-        <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600 dark:text-slate-400 absolute left-1/2 -translate-x-1/2">
-          <button onClick={() => scrollToSection("features")} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Features</button>
-          <button onClick={() => scrollToSection("live-demo")} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Live Demo</button>
-          <button onClick={() => scrollToSection("docs")} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Docs</button>
+        {/* Links Navigation */}
+        <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600 dark:text-slate-400 absolute left-1/2 -translate-x-1/2">
+          <button onClick={() => scrollToSection("features")} className="hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">Features</button>
+          <button onClick={() => scrollToSection("live-demo")} className="hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">Live Demo</button>
+          <button onClick={() => scrollToSection("docs")} className="hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">Docs</button>
         </nav>
 
-        {/* Right Actions Block */}
-        <div className="flex items-center gap-3.5">
-          {/* Active Custom Theme Control Switcher */}
-          <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900">
-            {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-indigo-600" />}
+        {/* Action Blocks */}
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-slate-600 dark:text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400">
+            {isDark ? <Sun className="h-[18px] w-[18px] text-amber-400" /> : <Moon className="h-[18px] w-[18px] text-indigo-600" />}
           </Button>
 
-          <Button variant="ghost" size="icon" onClick={handleGitHubRedirect} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900">
+          <Button variant="ghost" size="icon" onClick={handleGitHubRedirect} className="text-slate-600 dark:text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400">
             <CustomGitHubIcon className="h-4 w-4" />
           </Button>
 
-          {/* CLERK LIVE AUTH ACTIONS INTEGRATION */}
+          {/* CLERK ACTIONS */}
           <SignedOut>
-            <Link to="/login">
-              <button className="text-sm font-medium px-3 py-1.5 transition-colors text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+            <Link to="/login" className="hidden sm:inline-block">
+              <button className="text-sm font-semibold px-3 py-1.5 text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
                 Sign In
               </button>
             </Link>
             <Link to="/signup">
-              <Button className="bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 text-white rounded-lg px-4 shadow-md shadow-indigo-600/10 transition-all active:scale-95">
-                Sign Up
+              <Button className="bg-emerald-500 hover:bg-emerald-400 text-black font-semibold rounded-full px-5 py-2 shadow-lg shadow-emerald-500/10 transition-all active:scale-95 text-xs">
+                Book a demo
               </Button>
             </Link>
           </SignedOut>
 
           <SignedIn>
             <Link to="/dashboard">
-              <button className="text-sm font-medium px-3 py-1.5 transition-colors text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
-                Go to Dashboard
+              <button className="text-sm font-semibold px-3 py-1.5 text-slate-600 dark:text-slate-300 hover:text-emerald-400 transition-colors">
+                Dashboard
               </button>
             </Link>
             <UserButton afterSignOutUrl="/" />
@@ -116,105 +233,150 @@ export default function LandingPage() {
       </header>
 
       {/* HERO SECTION */}
-      <section className="pt-32 pb-20 px-6 md:px-12 flex flex-col items-center text-center max-w-4xl mx-auto space-y-6">
-        <div className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium border-indigo-100 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300">
-          <Sparkles className="h-3 w-3" />
-          <span>Sketch, Collaborate, and Build</span>
+      <section className="pt-36 pb-20 px-6 md:px-12 flex flex-col items-center text-center max-w-4xl mx-auto space-y-6">
+        {/* Announce Badge */}
+        <div className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-sm">
+          <Sparkles className="h-3 w-3 animate-spin" style={{ animationDuration: '3s' }} />
+          <span>Announcing our new dynamic sketch suite</span>
         </div>
 
-        <h1 className="text-4xl sm:text-6xl font-black tracking-tight leading-tight text-slate-900 dark:text-white">
-          The ultimate canvas for your <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">wildest ideas.</span>
+        {/* Big Nexus Title with Rotating Text Array */}
+        <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-[1.1] text-slate-900 dark:text-white">
+          Deliver collaborative <br />
+          <span className="relative inline-block h-[1.2em] overflow-hidden align-bottom">
+            <span 
+              key={wordIndex} 
+              className="absolute left-0 right-0 animate-word-change bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-300 bg-clip-text text-transparent"
+            >
+              {words[wordIndex]}
+            </span>
+            {/* Invisibly render the longest word to preserve text bounding size and prevent layout layout-shifting */}
+            <span className="opacity-0 select-none pointer-events-none">Relationships</span>
+          </span>
         </h1>
 
-        <p className="text-base sm:text-lg max-w-2xl leading-relaxed text-slate-500 dark:text-slate-400">
-          An open-source, hand-drawn styled whiteboard app to sketch diagrams, wireframes, or brainstorm with your team in real-time.
+        <p className="text-base sm:text-lg max-w-2xl leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
+          Support your team's brightest sketches on infinite canvas. Wireframe, map architecture design, and sync in real-time with responsive vector aesthetics.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 pt-4 w-full sm:w-auto justify-center">
+        <div className="flex flex-col sm:flex-row items-center gap-4 pt-6 w-full sm:w-auto justify-center">
           <Link to="/dashboard" className="w-full sm:w-auto">
-            <Button size="lg" className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-8 h-12 rounded-xl shadow-lg shadow-indigo-600/20 w-full sm:w-auto transition-all active:scale-95">
-              Start Drawing — It's Free
+            <Button size="lg" className="bg-emerald-500 hover:bg-emerald-400 hover:shadow-emerald-500/20 text-slate-950 font-bold px-8 h-12 rounded-full shadow-lg shadow-emerald-500/10 w-full sm:w-auto transition-all active:scale-95 flex items-center justify-center gap-2">
+              Start Free Hand-Sketching <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
-          <Button onClick={handleGitHubRedirect} size="lg" variant="outline" className="font-medium px-6 h-12 rounded-xl w-full sm:w-auto flex items-center justify-center gap-2 bg-white dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-200 transition-all active:scale-95">
-            <CustomGitHubIcon className="h-4 w-4" /> View on GitHub
+          <Button onClick={handleGitHubRedirect} size="lg" variant="outline" className="font-semibold px-6 h-12 rounded-full w-full sm:w-auto flex items-center justify-center gap-2 bg-transparent border-slate-300 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900/60 text-slate-700 dark:text-slate-300 transition-all active:scale-95">
+            <CustomGitHubIcon className="h-4 w-4" /> View Open Source
           </Button>
         </div>
       </section>
 
-      {/* INTERACTIVE PREVIEW PANEL */}
-      <div className="max-w-5xl mx-auto px-6 mb-24">
-        <div className="rounded-xl border p-2 shadow-2xl relative border-slate-200 dark:border-slate-900 bg-slate-200/60 dark:bg-slate-950">
-          <div className="absolute top-4 left-4 flex gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-rose-500/60" />
-            <div className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
-          </div>
-          <div className="w-full h-[400px] rounded-lg border flex flex-col items-center justify-center relative overflow-hidden border-slate-300 dark:border-slate-900/60 bg-slate-100 dark:bg-[#070a13]">
-            <div className="absolute top-4 p-1 rounded-lg border flex gap-4 text-xs font-mono px-3 py-1.5 bg-white dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 shadow-sm">
-              <span className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 p-0.5">⬠ Rectangle</span>
-              <span className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 p-0.5">◯ Circle</span>
-              <span className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 p-0.5">↗ Arrow</span>
-              <span className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 p-0.5">✎ Draw</span>
+      {/* SKETCHING IMAGE SECTION (Organic Sketching Viewpoint) */}
+      <ScrollReveal>
+        <div className="max-w-5xl mx-auto px-6 mb-28">
+          <div className="rounded-2xl border p-3 shadow-[0_0_50px_rgba(16,185,129,0.08)] dark:shadow-[0_0_50px_rgba(16,185,129,0.05)] relative border-slate-200/80 dark:border-slate-900 bg-slate-200/30 dark:bg-slate-950/40 backdrop-blur-sm">
+            <div className="absolute top-4 left-4 flex gap-1.5 z-10">
+              <div className="w-3 h-3 rounded-full bg-rose-500/40" />
+              <div className="w-3 h-3 rounded-full bg-amber-500/40" />
+              <div className="w-3 h-3 rounded-full bg-emerald-500/40" />
             </div>
-            
-            <div className="whiteboard-mockup relative w-full h-full text-slate-400 dark:text-slate-500 p-12 mt-6">
-              <div className="absolute top-1/4 left-1/4 transform -translate-x-1/2 -translate-y-1/2 border-2 border-dashed border-current rounded-xl p-4 text-left w-64 bg-white/50 dark:bg-transparent shadow-sm dark:shadow-none">
-                <p className="font-bold text-base text-slate-800 dark:text-slate-200 mb-1">User Experience Loop</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Define user flow, identify pain points, and map out the ideal interaction paths.</p>
-              </div>
 
-              <div className="absolute top-1/4 left-3/4 transform -translate-x-1/2 -translate-y-1/2 border-2 border-dashed border-current rounded-xl p-4 text-left w-64 bg-white/50 dark:bg-transparent shadow-sm dark:shadow-none">
-                <p className="font-bold text-base text-slate-800 dark:text-slate-200 mb-1">Core Features List</p>
-                <ul className="text-xs list-disc pl-4 text-slate-500 dark:text-slate-400 space-y-0.5">
-                  <li>Real-time Collaboration</li>
-                  <li>Hand-drawn Aesthetics</li>
-                  <li>Infinite Canvas</li>
-                  <li>Instant SVG Export</li>
-                </ul>
-              </div>
+            {/* Hand-drawn Mock Vector Sketch Concept Illustration */}
+            <div className="w-full min-h-[420px] rounded-xl border flex flex-col items-center justify-center relative overflow-hidden border-slate-300 dark:border-slate-800 bg-white dark:bg-[#06060a]">
+              <div className="absolute inset-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:20px_20px] opacity-10 pointer-events-none" />
+              
+              {/* Organic Hand-Drawn Sketch Drawing Overlay */}
+              <svg className="w-full max-w-3xl h-96 p-4 text-emerald-500 dark:text-emerald-400 opacity-90 stroke-current fill-none transition-transform duration-700 hover:scale-[1.02]" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 800 400">
+                {/* Hand Drawn Cloud Sketch */}
+                <path d="M 120,180 Q 110,140 150,130 Q 170,90 220,110 Q 250,90 280,120 Q 320,110 310,150 Q 340,180 300,210 Q 280,240 230,220 Q 190,240 160,210 Q 100,210 120,180 Z" className="animate-[pulse_4s_infinite_alternate]" />
+                <text x="160" y="170" className="fill-slate-800 dark:fill-slate-200 text-xs font-mono tracking-wider stroke-0 font-bold">Cloud Server</text>
 
-              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 border-2 border-dashed border-current rounded-xl p-4 text-center w-80 bg-white/50 dark:bg-transparent shadow-sm dark:shadow-none">
-                <p className="font-bold text-base text-slate-800 dark:text-slate-200 mb-2">Component Architecture Sketch</p>
-                <div className="grid grid-cols-3 gap-1.5 text-[10px] font-mono text-slate-600 dark:text-slate-300">
-                  <div className="border border-current rounded p-1 bg-white dark:bg-slate-900">Navbar</div>
-                  <div className="border border-current rounded p-1 col-span-2 bg-white dark:bg-slate-900">MainCanvas</div>
-                  <div className="border border-current rounded p-1 col-span-3 bg-white dark:bg-slate-900">Sidebar (Tools & Layers)</div>
-                </div>
-              </div>
+                {/* Hand Drawn Connection Lines with Arrows */}
+                <path d="M 320,170 C 370,170 380,110 440,110" />
+                <path d="M 430,105 L 442,110 L 430,115" />
+
+                <path d="M 320,170 C 370,170 380,230 440,230" />
+                <path d="M 430,225 L 442,230 L 430,235" />
+
+                {/* Hand Drawn Rectangle Database Node */}
+                <path d="M 450,80 L 580,80 C 585,82 583,78 580,140 L 450,140 C 445,138 448,142 450,80" />
+                <text x="470" y="115" className="fill-slate-800 dark:fill-slate-200 text-xs font-mono stroke-0 font-bold">Web Frontend</text>
+
+                {/* Hand Drawn Circle Sync Node */}
+                <path d="M 515,230 A 40,42 0 1 1 514.9,230 Z" />
+                <text x="488" y="235" className="fill-slate-800 dark:fill-slate-200 text-xs font-mono stroke-0 font-bold">Sync API</text>
+
+                {/* Annotation arrow & notes */}
+                <path d="M 280,310 C 360,330 420,310 480,255" className="stroke-dashed stroke-emerald-500/60" />
+                <path d="M 470,252 L 482,253 L 477,262" className="stroke-emerald-500/60" />
+                <text x="220" y="340" className="fill-emerald-600 dark:fill-emerald-400 text-xs font-mono stroke-0 italic">"Real-time websocket sync frame loop"</text>
+              </svg>
             </div>
           </div>
         </div>
-      </div>
+      </ScrollReveal>
 
-      {/* FEATURES SECTION */}
-      <section id="features" className="py-24 border-t scroll-mt-16 bg-slate-100/50 dark:bg-slate-950/30 border-slate-200 dark:border-slate-900">
+      {/* "PACKED WITH EVERYTHING YOU NEED" SECTION (With Glowing Dynamic Hover/Animation Effects) */}
+      <section id="features" className="py-24 border-t scroll-mt-16 bg-slate-100/30 dark:bg-slate-950/20 border-slate-200/80 dark:border-slate-900/80">
         <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center max-w-xl mx-auto mb-16 space-y-3">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Packed with everything you need</h2>
-            <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">No bloat. Just speed, fluid hand-drawn aesthetics, and robust drawing tools.</p>
-          </div>
+          <ScrollReveal>
+            <div className="text-center max-w-xl mx-auto mb-20 space-y-4">
+              <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">Packed with everything you need</h2>
+              <p className="text-base leading-relaxed text-slate-500 dark:text-slate-400">Zero bloat. Absolute performance. Built purely for high-fidelity hand-drawn designs.</p>
+            </div>
+          </ScrollReveal>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Glowing Animated Interactive Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { title: "Hand-Drawn Feel", desc: "Transform rigid shapes into beautiful, organic sketches automatically using rough.js logic.", icon: Sparkles, color: "text-amber-500", badge: "✍️" },
-              { title: "Instant Export", desc: "Save your canvas directly to PNG, SVG, or copy it instantly onto your clipboard with one click.", icon: Zap, color: "text-indigo-500", badge: "⚡" },
-              { title: "Live Syncing", desc: "Invite your team with a shareable URL and brainstorm together on a low-latency shared state.", icon: Users, color: "text-purple-500", badge: "👥" }
+              { 
+                title: "Hand-Drawn Logic", 
+                desc: "Convert boring vector shapes into warm, sketchy components effortlessly using our smart geometry engine.", 
+                icon: Sparkles, 
+                color: "text-emerald-400 shadow-emerald-500/10", 
+                badge: "✍️" 
+              },
+              { 
+                title: "Optimized Export", 
+                desc: "Quickly export frames directly to clean SVG formats, dynamic high-res PNG arrays, or clipboards with single key bindings.", 
+                icon: Zap, 
+                color: "text-teal-400 shadow-teal-500/10", 
+                badge: "⚡" 
+              },
+              { 
+                title: "Low-Latency Sync", 
+                desc: "Brainstorm on the same shared spatial workspace safely with teammates using reliable zero-lag multiplayer setups.", 
+                icon: Users, 
+                color: "text-emerald-500 shadow-emerald-500/10", 
+                badge: "👥" 
+              }
             ].map((feat, idx) => {
               const Icon = feat.icon;
               return (
-                <Card key={idx} className="transition-all hover:border-indigo-500/50 bg-white dark:bg-slate-900/40 border-slate-200 dark:border-slate-900 shadow-sm dark:shadow-none">
-                  <CardContent className="p-6 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className={`p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 ${feat.color}`}>
-                        <Icon className="h-5 w-5" />
+                <ScrollReveal key={idx}>
+                  <div className="group relative rounded-2xl p-[1px] bg-slate-200 dark:bg-slate-900 hover:bg-gradient-to-br hover:from-emerald-500 hover:to-teal-300 transition-all duration-500 shadow-md hover:shadow-xl hover:shadow-emerald-500/10 transform hover:-translate-y-2">
+                    <div className="relative rounded-[15px] p-8 h-full bg-white dark:bg-[#0a0a0f] transition-all">
+                      
+                      {/* Glow effect spot inside card */}
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                      <div className="flex items-center justify-between mb-6">
+                        <div className={`p-3 rounded-xl border bg-slate-50 dark:bg-[#0c0c14] border-slate-200 dark:border-slate-800 ${feat.color}`}>
+                          <Icon className="h-6 w-6 text-emerald-500 dark:text-emerald-400 group-hover:scale-110 transition-transform duration-300" />
+                        </div>
+                        <span className="text-2xl filter drop-shadow-[0_4px_12px_rgba(16,185,129,0.15)] group-hover:rotate-12 transition-transform duration-300">{feat.badge}</span>
                       </div>
-                      <span className="text-xl">{feat.badge}</span>
+                      
+                      <h3 className="font-bold text-xl text-slate-900 dark:text-white mb-3 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">
+                        {feat.title}
+                      </h3>
+                      
+                      <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
+                        {feat.desc}
+                      </p>
                     </div>
-                    <h3 className="font-semibold text-lg text-slate-900 dark:text-white">{feat.title}</h3>
-                    <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">{feat.desc}</p>
-                  </CardContent>
-                </Card>
+                  </div>
+                </ScrollReveal>
               );
             })}
           </div>
@@ -224,99 +386,123 @@ export default function LandingPage() {
       {/* LIVE DEMO SECTION */}
       <section id="live-demo" className="py-24 border-t scroll-mt-16 border-slate-200 dark:border-slate-900">
         <div className="max-w-5xl mx-auto px-6 space-y-12">
-          <div className="text-center max-w-xl mx-auto space-y-3">
-            <div className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium border bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/60">
-              <Play className="h-3 w-3 fill-current" /> Interactive Sandbox
+          <ScrollReveal>
+            <div className="text-center max-w-xl mx-auto space-y-4">
+              <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                <Play className="h-3 w-3 fill-current" /> Interactive Sandbox
+              </div>
+              <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">Try interactive micro-canvas</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Test our vector render layers in real-time. No sign-up required.</p>
             </div>
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Try it live inside the page</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Interact with our micro-render interface framework instantly. No signup required.</p>
-          </div>
+          </ScrollReveal>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 rounded-2xl border p-4 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-900 shadow-sm dark:shadow-none">
-            <div className="space-y-6 p-2 lg:col-span-1">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Select Shape</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {["rectangle", "circle"].map((shape) => (
-                    <button
-                      key={shape}
-                      onClick={() => setDemoShape(shape)}
-                      className={`py-2 text-xs font-medium rounded-lg capitalize border transition ${
-                        demoShape === shape ? "bg-indigo-600 border-indigo-500 text-white" : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:text-white"
-                      }`}
-                    >
-                      {shape}
-                    </button>
-                  ))}
+          <ScrollReveal>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 rounded-2xl border p-6 bg-white dark:bg-[#09090e] border-slate-200 dark:border-slate-900 shadow-lg">
+              {/* Controls panel */}
+              <div className="space-y-6 lg:col-span-1 flex flex-col justify-center">
+                <div className="space-y-3">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Active Preset</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {["rectangle", "circle"].map((shape) => (
+                      <button
+                        key={shape}
+                        onClick={() => setDemoShape(shape)}
+                        className={`py-2 px-3 text-xs font-bold rounded-full capitalize border transition-all ${
+                          demoShape === shape 
+                            ? "bg-emerald-500 border-emerald-400 text-slate-950 font-extrabold" 
+                            : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-emerald-400"
+                        }`}
+                      >
+                        {shape}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Stroke Glow</label>
+                  <div className="flex gap-3">
+                    {["#10b981", "#3b82f6", "#ec4899", "#eab308"].map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => setDemoColor(color)}
+                        style={{ backgroundColor: color }}
+                        className={`w-7 h-7 rounded-full transition-transform ${
+                          demoColor === color ? "scale-125 ring-2 ring-emerald-400 dark:ring-white ring-offset-2 dark:ring-offset-[#08080c]" : "hover:scale-110"
+                        }`}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Stroke Color</label>
-                <div className="flex gap-2">
-                  {["#6366f1", "#10b981", "#f59e0b", "#ec4899"].map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => setDemoColor(color)}
-                      style={{ backgroundColor: color }}
-                      className={`w-6 h-6 rounded-full transition-transform border-2 ${demoColor === color ? "scale-110 border-slate-400 dark:border-white" : "border-transparent"}`}
+              {/* Vector view area */}
+              <div className="lg:col-span-3 h-72 lg:h-80 rounded-xl border relative flex items-center justify-center bg-slate-50 dark:bg-[#050508] border-slate-200/80 dark:border-slate-900 overflow-hidden">
+                <div className="absolute top-3 left-3 text-[10px] font-mono text-slate-400 tracking-widest uppercase">Renderer Vector Interface</div>
+                <div className="transition-all duration-500 transform hover:scale-110" style={{ color: demoColor }}>
+                  {demoShape === "rectangle" ? (
+                    <div 
+                      className="w-44 h-28 border-4 rounded-xl transition-all duration-300" 
+                      style={{ 
+                        borderColor: demoColor, 
+                        boxShadow: `0 0 30px ${demoColor}30`, 
+                        backgroundColor: `${demoColor}15` 
+                      }} 
                     />
-                  ))}
+                  ) : (
+                    <div 
+                      className="w-32 h-32 border-4 rounded-full transition-all duration-300" 
+                      style={{ 
+                        borderColor: demoColor, 
+                        boxShadow: `0 0 30px ${demoColor}30`, 
+                        backgroundColor: `${demoColor}15` 
+                      }} 
+                    />
+                  )}
                 </div>
               </div>
             </div>
-
-            <div className="lg:col-span-3 h-64 lg:h-80 rounded-xl border relative flex items-center justify-center bg-slate-50 dark:bg-[#06080f] border-slate-200 dark:border-slate-900">
-              <div className="absolute top-3 left-3 text-[10px] font-mono text-slate-400">Canvas Core Sandbox Layer</div>
-              <div className="transition-all duration-300 transform hover:scale-105" style={{ color: demoColor }}>
-                {demoShape === "rectangle" ? (
-                  <div className="w-36 h-24 border-4 rounded-md bg-opacity-10 animate-pulse" style={{ borderColor: demoColor, backgroundColor: `${demoColor}15` }} />
-                ) : (
-                  <div className="w-28 h-28 border-4 rounded-full bg-opacity-10 animate-pulse" style={{ borderColor: demoColor, backgroundColor: `${demoColor}15` }} />
-                )}
-              </div>
-            </div>
-          </div>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* DOCUMENTATION SECTION */}
-      <section id="docs" className="py-24 border-t scroll-mt-16 bg-slate-100/30 dark:bg-slate-950/20 border-slate-200 dark:border-slate-900">
-        <div className="max-w-5xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10">
+      <section id="docs" className="py-24 border-t scroll-mt-16 bg-slate-100/20 dark:bg-slate-950/10 border-slate-200 dark:border-slate-900">
+        <div className="max-w-5xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12">
           <div className="space-y-4 md:col-span-1">
-            <div className="inline-flex items-center gap-1.5 text-xs font-mono text-purple-500">
-              <BookOpen className="h-4 w-4" /> Technical Blueprints
+            <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-500">
+              <BookOpen className="h-4 w-4" /> Architectural Schemas
             </div>
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Developer Docs</h2>
-            <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-              Explore configuration options, programmatic layout parameters, and quick keyboard utility schemas.
+            <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Developer Specs</h2>
+            <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
+              Access modular configuration matrices, coordinates structures, and high-frequency key bindings.
             </p>
           </div>
 
           <div className="md:col-span-2 space-y-6">
-            <div className="border rounded-xl p-5 space-y-4 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-900 shadow-sm dark:shadow-none">
+            <div className="border rounded-xl p-6 space-y-4 bg-white dark:bg-[#09090e] border-slate-200 dark:border-slate-900/60 shadow-sm">
               <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
-                <Terminal className="h-4 w-4 text-indigo-500" />
-                <span>Quickstart Framework Integration</span>
+                <Terminal className="h-4 w-4 text-emerald-500" />
+                <span>Initialize Board SDK package</span>
               </div>
-              <div className="rounded-lg p-3 font-mono text-xs border overflow-x-auto whitespace-pre bg-slate-50 dark:bg-slate-900/60 text-indigo-700 dark:text-indigo-300 border-slate-200 dark:border-slate-800/60">
+              <div className="rounded-lg p-4 font-mono text-xs border overflow-x-auto whitespace-pre bg-slate-50 dark:bg-slate-900/80 text-emerald-600 dark:text-emerald-400 border-slate-200 dark:border-slate-800/60">
                 npm install @boardcraft/canvas-core roughjs
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="border rounded-xl p-5 space-y-2 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-900 shadow-sm dark:shadow-none">
+              <div className="border rounded-xl p-5 space-y-2 bg-white dark:bg-[#09090e] border-slate-200 dark:border-slate-900/60 shadow-sm">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                  <Code className="h-3.5 w-3.5 text-purple-500" /> Elements Schema
+                  <Code className="h-3.5 w-3.5 text-emerald-500" /> Vector Schemas
                 </div>
                 <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                   Every asset is preserved natively inside structured arrays containing coordinates ($x_1$, $y_1$), operational dimensions, opacity parameters, and custom type definitions.
                 </p>
               </div>
 
-              <div className="border rounded-xl p-5 space-y-2 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-900 shadow-sm dark:shadow-none">
+              <div className="border rounded-xl p-5 space-y-2 bg-white dark:bg-[#09090e] border-slate-200 dark:border-slate-900/60 shadow-sm">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                  <Maximize2 className="h-3.5 w-3.5 text-emerald-500" /> Hotkey Shortcuts
+                  <Maximize2 className="h-3.5 w-3.5 text-emerald-500" /> Rapid Bindings
                 </div>
                 <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                   Accelerate board mapping speeds using quick triggers: <code className="px-1 py-0.5 rounded font-mono bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-300">V</code> for selection tools, and <code className="px-1 py-0.5 rounded font-mono bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-300">R</code> for rectangles.
@@ -327,52 +513,51 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FOOTER SECTION */}
-      <footer className="border-t pt-16 pb-8 px-6 md:px-12 bg-slate-100 dark:bg-slate-950/60 border-slate-200 dark:border-slate-900">
+      {/* FOOTER SECTION - Fully Black in Dark Theme and Pure White in Light Theme */}
+      <footer className="border-t pt-16 pb-8 px-6 md:px-12 transition-colors duration-500 bg-white text-black dark:bg-[#000000] dark:text-white border-slate-200 dark:border-slate-950">
         <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
           <div className="col-span-2 space-y-4">
-            <div className="flex items-center gap-2 font-bold text-lg tracking-tight text-indigo-500">
-              <div className="h-6 w-6 rounded bg-indigo-600 flex items-center justify-center text-white text-xs font-black">⚡</div>
+            <div className="flex items-center gap-2 font-black text-xl tracking-tight">
               <span>BoardCraft</span>
             </div>
-            <p className="text-xs max-w-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            <p className="text-xs max-w-xs leading-relaxed text-slate-600 dark:text-slate-400 font-medium">
               The high-performance spatial whiteboarding environment tailored for system engineers, agile product developers, and interface crafters.
             </p>
-            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] border bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-400">
-              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 fill-emerald-500 animate-ping" />
-              <span>Status: All Systems Operational</span>
+            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+              <span>Status: All Core Canvas Systems Normal</span>
             </div>
           </div>
 
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Product</h4>
-            <ul className="space-y-2 text-xs text-slate-500 dark:text-slate-400">
-              <li><button onClick={() => scrollToSection("features")} className="hover:text-indigo-500 transition-colors">Features Layer</button></li>
-              <li><button onClick={() => scrollToSection("live-demo")} className="hover:text-indigo-500 transition-colors">Interactive Engine</button></li>
-              <li><a href="#" className="hover:text-indigo-500 transition-colors">Enterprise Sync</a></li>
+            <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400 font-medium">
+              <li><button onClick={() => scrollToSection("features")} className="hover:text-emerald-400 transition-colors">Features Layer</button></li>
+              <li><button onClick={() => scrollToSection("live-demo")} className="hover:text-emerald-400 transition-colors">Interactive Engine</button></li>
+              <li><a href="#" className="hover:text-emerald-400 transition-colors">Enterprise Sync</a></li>
             </ul>
           </div>
 
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Resources</h4>
-            <ul className="space-y-2 text-xs text-slate-500 dark:text-slate-400">
-              <li><button onClick={() => scrollToSection("docs")} className="hover:text-indigo-500 transition-colors">Documentation</button></li>
-              <li><a href="#" className="hover:text-indigo-500 transition-colors">API References</a></li>
-              <li><a href="#" className="hover:text-indigo-500 transition-colors">Open Source Center</a></li>
+            <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400 font-medium">
+              <li><button onClick={() => scrollToSection("docs")} className="hover:text-emerald-400 transition-colors">Documentation</button></li>
+              <li><a href="#" className="hover:text-emerald-400 transition-colors">API References</a></li>
+              <li><a href="#" className="hover:text-emerald-400 transition-colors">Open Source Center</a></li>
             </ul>
           </div>
 
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Community</h4>
-            <ul className="space-y-2 text-xs text-slate-500 dark:text-slate-400">
-              <li><button onClick={handleGitHubRedirect} className="hover:text-indigo-500 transition-colors flex items-center gap-1">GitHub Repositories <ExternalLink className="h-2.5 w-2.5" /></button></li>
-              <li><a href="#" className="hover:text-indigo-500 transition-colors">Discord Workspace</a></li>
-              <li><a href="#" className="hover:text-indigo-500 transition-colors">Twitter Updates</a></li>
+            <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400 font-medium">
+              <li><button onClick={handleGitHubRedirect} className="hover:text-emerald-400 transition-colors flex items-center gap-1">GitHub Repositories <ExternalLink className="h-2.5 w-2.5" /></button></li>
+              <li><a href="#" className="hover:text-emerald-400 transition-colors">Discord Workspace</a></li>
+              <li><a href="#" className="hover:text-emerald-400 transition-colors">Twitter Updates</a></li>
             </ul>
           </div>
         </div>
 
-        <div className="max-w-5xl mx-auto border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] border-slate-200 dark:border-slate-900 text-slate-400 dark:text-slate-500">
+        <div className="max-w-5xl mx-auto border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] border-slate-200 dark:border-slate-900 text-slate-600 dark:text-slate-500 font-semibold">
           <p>&copy; {new Date().getFullYear()} BoardCraft Inc. All rights reserved.</p>
           <div className="flex items-center gap-1">
             <span>Designed and compiled with</span>
@@ -381,7 +566,6 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-
     </div>
   );
 }
